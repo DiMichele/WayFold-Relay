@@ -1,0 +1,51 @@
+WayFold Relay — pacchetto offline
+=================================
+
+Questo zip contiene l'app Relay completa e un server HTTPS locale.
+Non serve internet né installare la PWA.
+
+REQUISITI
+---------
+• Windows 10/11 (PC che fa da server)
+• Telefono con browser (Chrome/Safari) per ricevere
+• Stessa rete locale tra PC e telefono (Wi‑Fi, hotspot del PC senza internet, ecc.)
+
+AVVIO (sul PC senza connessione)
+--------------------------------
+1. Copia l'intera cartella dal USB sul disco (es. C:\WayFold-Relay-offline\)
+2. Doppio clic su  Avvia-Relay.bat
+3. Nella finestra nera compaiono gli indirizzi https:// da usare
+
+MITTENTE (schermo con QR)
+-------------------------
+Sul PC apri nel browser:
+  https://localhost:8443/send/
+Accetta l'avviso sul certificato (una volta).
+Scegli il file, massima luminosità schermo.
+
+RICEVENTE (fotocamera)
+----------------------
+Sul telefono, stessa rete del PC, apri l'indirizzo indicato dal server, es.:
+  https://192.168.x.x:8443/receive/
+Accetta certificato + consenti fotocamera.
+Inquadra il QR sullo schermo del PC.
+
+NOTA SUL CERTIFICATO
+--------------------
+Il certificato è autofirmato (solo uso locale). È normale che il browser avvisi:
+  • Windows: "Connessione non privata" → Avanzate → Procedi
+  • Android Chrome: Avanzate → Procedi su …
+  • iPhone Safari: Mostra dettagli → visita questo sito web
+
+FERMARE IL SERVER
+-----------------
+Chiudi la finestra del server o premi Ctrl+C.
+
+STRUTTURA
+---------
+  dist/           App web (già compilata)
+  node/           Node.js portatile (non serve installazione)
+  offline/        Server e certificati
+  Avvia-Relay.bat Avvio rapido
+
+Il trasferimento del file avviene solo via luce (QR); internet non è usato.

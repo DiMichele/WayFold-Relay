@@ -1,0 +1,25 @@
+{
+  "name": "wayfold-relay",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "WayFold Relay — trasferimento file tra dispositivi vicini via QR animato (fountain codes), senza upload.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test",
+    "build": "tsc && vite build && node scripts/generate-sw.mjs",
+    "build:offline-zip": "node scripts/build-offline-zip.mjs",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.5",
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
+    "qrcode": "^1.5.4",
+    "selfsigned": "^5.5.0",
+    "typescript": "^5.5.0",
+    "vite": "^6.0.0",
+    "zxing-wasm": "^2.0.0"
+  }
+}

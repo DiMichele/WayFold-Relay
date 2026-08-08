@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Show a QR code to send a file from this device." />
+    <meta name="theme-color" content="#F7F6F3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#141A1F" media="(prefers-color-scheme: dark)" />
+    <meta name="application-name" content="WayFold Relay" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Relay" />
+    <title data-i18n="page.send">WayFold Relay ? Send</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;450;500;600&family=Jost:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="/icons/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="/icons/favicon-16.png" type="image/png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <script>
+      try {
+        var t = localStorage.getItem("ot-theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
+    <style>
+      .ld{position:fixed;inset:0;z-index:999;background:#F7F6F3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .55s cubic-bezier(.2,.75,.25,1),visibility .55s}
+      @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .ld{background:#141A1F}}
+      [data-theme=dark] .ld{background:#141A1F}
+      [data-theme=light] .ld{background:#F7F6F3}
+      .ld.gone{opacity:0;visibility:hidden;pointer-events:none}
+      .ld .brand--load{display:flex;flex-direction:column;align-items:center;text-align:center;animation:ldFade 1.6s ease infinite alternate}
+      .ld .brand-name{font-family:Jost,Inter,system-ui,sans-serif;font-weight:500;line-height:1;font-size:clamp(1.85rem,6.5vw,2.2rem);letter-spacing:-.03em;color:#1a242b;text-transform:lowercase}
+      .ld .brand-suffix{color:#8a9690;font-weight:500}
+      .ld .brand-tagline{margin-top:9px;font-family:Inter,system-ui,sans-serif;font-size:10px;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:#8a9690}
+      @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .ld .brand-name{color:#f0ede8}}
+      [data-theme=dark] .ld .brand-name{color:#f0ede8}
+      .ld-rule{display:flex;gap:6px}
+      .ld-seg{width:34px;height:2px;background:rgba(26,36,43,.14);overflow:hidden;position:relative;border-radius:2px}
+      @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .ld-seg{background:rgba(240,237,232,.15)}}
+      [data-theme=dark] .ld-seg{background:rgba(240,237,232,.15)}
+      .ld-seg::after{content:"";position:absolute;inset:0;background:#d97b5c;transform:translateX(-100%);animation:ldSeg 1.5s cubic-bezier(.2,.75,.25,1) infinite}
+      [data-theme=dark] .ld-seg::after{background:#e08b70}
+      .ld-seg:nth-child(2)::after{animation-delay:.18s}
+      .ld-seg:nth-child(3)::after{animation-delay:.36s}
+      .ld-seg:nth-child(4)::after{animation-delay:.54s}
+      @keyframes ldSeg{40%{transform:translateX(0)}100%{transform:translateX(100%)}}
+      @keyframes ldFade{from{opacity:.55}to{opacity:1}}
+    </style>
+    <link rel="stylesheet" href="../shared/style.css" />
+    <script src="/js/install-capture.js"></script>
+  </head>
+  <body class="role-send" data-mode="send">
+    <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="ld" id="ld">
+      <div class="brand brand--load" aria-hidden="true">
+        <div class="brand-name">wayfold <span class="brand-suffix">relay</span></div>
+        <div class="brand-tagline" data-i18n="app.tagline">Transfers by light, not the internet</div>
+      </div>
+      <div class="ld-rule"><div class="ld-seg"></div><div class="ld-seg"></div><div class="ld-seg"></div><div class="ld-seg"></div></div>
+    </div>
+
+    <header class="topbar">
+      <a class="brand brand--side" href="../" data-mode-link="home">
+        <span class="brand-name">wayfold <span class="brand-suffix">relay</span></span>
+        <span class="brand-tagline" data-i18n="app.tagline">Transfers by light, not the internet</span>
+      </a>
+
+      <nav class="mode-nav" id="mode-nav" aria-label="Mode">
+        <button type="button" class="mode-btn is-active" data-mode-btn="send" data-i18n="nav.send">Send</button>
+        <button type="button" class="mode-btn" data-mode-btn="receive" data-i18n="nav.receive">Receive</button>
+      </nav>
+
+      <div class="tb-actions">
+        <div class="lang-wrap">
+          <button type="button" class="tb-btn lang-btn" id="langToggle" aria-haspopup="listbox" aria-expanded="false" data-i18n-aria="lang.label">
+            <span id="langFlag">IT</span>
+          </button>
+          <div class="lang-menu" id="langMenu" role="listbox"></div>
+        </div>
+        <button type="button" class="tb-btn" id="themeToggle" data-i18n-aria="theme.toggle">
+          <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section id="view-home" class="view view-home" hidden>
+        <div class="home-board">
+          <header class="home-hero">
+            <p class="home-brand">wayfold <span class="brand-suffix">relay</span></p>
+            <h1 class="home-title" data-i18n="home.title">Pass a file from one screen to another.</h1>
+            <p class="home-lead" data-i18n="home.lead">No Wi?Fi, no cable, no upload ? just a QR between two devices held close.</p>
+            <p class="home-footnote" data-i18n="home.footnote">Keep the camera pointed at the sender screen until the file is ready.</p>
+          </header>
+
+          <div class="home-visual" aria-hidden="true">
+            <div class="demo-stage">
+              <figure class="demo-panel">
+                <div class="demo-monitor">
+                  <div class="demo-monitor-screen">
+                    <img class="demo-qr-img" src="/img/demo-qr.png" width="160" height="160" alt="" decoding="async" />
+                  </div>
+                  <div class="demo-monitor-chin"></div>
+                  <div class="demo-monitor-stand"></div>
+                  <div class="demo-monitor-base"></div>
+                </div>
+                <figcaption class="demo-cap">
+                  <span class="demo-cap-kicker" data-i18n="nav.send">Send</span>
+                  <span class="demo-cap-text" data-i18n="home.demoSend">QR on the screen</span>
+                </figcaption>
+              </figure>
+
+              <div class="demo-link">
+                <div class="demo-beam"></div>
+                <span class="demo-link-label" data-i18n="home.demoLink">By light</span>
+              </div>
+
+              <figure class="demo-panel">
+                <div class="demo-phone">
+                  <div class="demo-phone-shell">
+                    <div class="demo-phone-speaker"></div>
+                    <div class="demo-phone-screen">
+                      <img class="demo-qr-img demo-qr-img--scan" src="/img/demo-qr.png" width="96" height="96" alt="" decoding="async" />
+                      <span class="demo-scan-reticle"></span>
+                      <span class="demo-scan-line"></span>
+                    </div>
+                  </div>
+                </div>
+                <figcaption class="demo-cap">
+                  <span class="demo-cap-kicker" data-i18n="nav.receive">Receive</span>
+                  <span class="demo-cap-text" data-i18n="home.demoRecv">Scan with the camera</span>
+                </figcaption>
+              </figure>
+            </div>
+          </div>
+        </div>
+
+        <div class="choice-list">
+          <a class="choice choice--send" href="../send/" data-mode-link="send">
+            <span class="choice-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4-4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+            </span>
+            <span class="choice-body">
+              <span class="choice-kicker" data-i18n="nav.send">Send</span>
+              <span class="choice-hint" data-i18n="home.sendHint"></span>
+              <span class="choice-step" data-i18n="home.stepSend">On this device</span>
+            </span>
+          </a>
+          <a class="choice choice--receive" href="../receive/" data-mode-link="receive">
+            <span class="choice-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </span>
+            <span class="choice-body">
+              <span class="choice-kicker" data-i18n="nav.receive">Receive</span>
+              <span class="choice-hint" data-i18n="home.receiveHint"></span>
+              <span class="choice-step" data-i18n="home.stepRecv">On the other device</span>
+            </span>
+          </a>
+        </div>
+      </section>
+
+      <section id="view-send" class="view">
+        <div class="card workspace">
+          <div class="drop-zone" id="drop-zone">
+            <input id="cfg-payload" type="file" class="sr-only" multiple />
+            <div class="drop-zone-inner">
+              <div class="placeholder-frame drop-zone-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3-3 3 3"/></svg>
+              </div>
+              <div class="file-field-main">
+                <span class="file-field-label" data-i18n="send.fileLabel">Files</span>
+                <span class="file-field-name" id="file-name" data-i18n="send.fileEmpty">No file selected yet</span>
+                <span class="file-field-size" id="file-size" hidden></span>
+              </div>
+              <label class="btn-outline" for="cfg-payload" data-i18n="send.fileChange">Select files</label>
+              <p class="drop-zone-hint" data-i18n="send.dropHint">or drag and drop here</p>
+            </div>
+          </div>
+          <div class="banner banner--error" id="send-error" hidden role="alert"></div>
+          <div class="stage-wrap">
+            <div class="stage" id="qr-stage" hidden aria-hidden="true">
+              <canvas id="qr" width="16" height="16"></canvas>
+            </div>
+            <div class="stage-placeholder card-inner" id="qr-placeholder">
+              <div class="placeholder-frame" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h2v2h-2zm4 0h2v2h-2zm-4 4h2v2h-2zm4 0h2v2h-2z"/></svg>
+              </div>
+              <p data-i18n="send.qrWaiting">QR code appears here</p>
+            </div>
+          </div>
+          <div class="xfer-status" id="send-xfer" hidden>
+            <div class="xfer-status-head">
+              <span class="xfer-live" id="send-live" aria-hidden="true"></span>
+              <span class="xfer-state" id="send-state" role="status"></span>
+            </div>
+            <p class="xfer-hint" data-i18n="send.pointCamera">Point the other device?s camera at this QR and keep the screen facing it.</p>
+          </div>
+          <p class="status-line" id="specs" hidden role="status"></p>
+          <div class="xfer-actions" id="send-controls" hidden>
+            <button type="button" id="send-pause" class="btn-secondary btn-icon-text" data-i18n="xfer.pause">Pause</button>
+            <button type="button" id="send-resume" class="btn-primary btn-icon-text" hidden data-i18n="xfer.resume">Resume</button>
+            <button type="button" id="send-stop" class="btn-ghost btn-cancel" data-i18n="xfer.cancel">Cancel</button>
+          </div>
+        </div>
+        <div class="settings-defaults" hidden aria-hidden="true">
+          <select id="cfg-fps"><option>10</option><option selected>15</option><option>20</option><option>24</option><option>30</option><option>60</option></select>
+          <select id="cfg-bytes"><option>500</option><option>1000</option><option selected>1465</option><option>1850</option><option>2331</option><option>2953</option></select>
+          <select id="cfg-ecc"><option value="L">L</option><option value="M" selected>M</option><option value="Q">Q</option><option value="H">H</option></select>
+          <input id="cfg-size" type="range" min="300" max="1200" step="50" value="1000" />
+        </div>
+      </section>
+
+      <section id="view-receive" class="view" hidden>
+        <div class="card workspace">
+          <div class="receive-wait card-inner" id="receive-wait">
+            <div class="placeholder-frame" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <p class="receive-wait-lead" data-i18n="receive.introLead">Point your camera at the sender screen to receive the file.</p>
+            <ul class="tip-list">
+              <li data-i18n="receive.tipLight">Good lighting, avoid screen glare</li>
+              <li data-i18n="receive.tipDistance">Hold 20?40 cm from the screen</li>
+              <li data-i18n="receive.tipSteady">Keep the phone steady while progress moves</li>
+            </ul>
+          </div>
+          <div class="banner banner--error" id="recv-error" hidden role="alert"></div>
+          <div class="banner banner--info" id="recv-tips" hidden>
+            <strong data-i18n="receive.fallbackTitle">Camera trouble?</strong>
+            <p data-i18n="receive.fallbackBody">Relay needs a working camera on this device. Try another phone, grant permission in the browser, or improve lighting ? there is no internet fallback by design.</p>
+          </div>
+          <div class="toolbar" id="toolbar">
+            <button type="button" id="start" class="btn-primary btn-primary--lg" data-i18n="receive.start">Open camera</button>
+            <button type="button" id="cancel" class="btn-ghost btn-cancel" hidden data-i18n="receive.cancel">Cancel</button>
+            <button type="button" id="reset" class="btn-ghost" hidden data-i18n="receive.reset">Start over</button>
+          </div>
+          <p class="perm-hint" id="camera-perm-hint" hidden data-i18n="receive.permHint"></p>
+          <div class="camera-panel" id="camera-panel" hidden>
+            <div class="preview" id="preview">
+              <video id="video" muted playsinline></video>
+            </div>
+            <div class="xfer-progress" id="xfer-progress" hidden>
+              <div class="xfer-progress-head">
+                <span class="xfer-state" id="xfer-state" role="status"></span>
+                <span class="xfer-pct" id="xfer-pct">0%</span>
+              </div>
+              <div class="progress progress--lg"><div id="bar"></div></div>
+              <p class="xfer-hint" data-i18n="receive.keepPointing">Keep the camera on the QR until the transfer finishes.</p>
+              <dl class="xfer-stats xfer-stats--row">
+                <div><dt data-i18n="stat.speed">Speed</dt><dd id="m-rate">0 B/s</dd></div>
+                <div><dt data-i18n="stat.eta">Time remaining</dt><dd id="m-eta">?</dd></div>
+                <div><dt data-i18n="stat.done">Downloaded</dt><dd id="m-done">?</dd></div>
+                <div><dt data-i18n="stat.left">Remaining</dt><dd id="m-left">?</dd></div>
+              </dl>
+              <div class="xfer-controls">
+                <button type="button" id="pause" class="btn-xfer" hidden>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+                  <span data-i18n="xfer.pause">Pause</span>
+                </button>
+                <button type="button" id="resume" class="btn-xfer btn-xfer--go" hidden>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                  <span data-i18n="xfer.resume">Resume</span>
+                </button>
+              </div>
+            </div>
+            <p class="status-line" id="stats" hidden role="status"></p>
+          </div>
+          <div id="result" class="result-panel"></div>
+        </div>
+        <div class="settings-defaults" id="settings" hidden aria-hidden="true">
+          <select id="cfg-width"><option>960</option><option selected>1280</option><option>1920</option></select>
+          <select id="cfg-capfps"><option>30</option><option selected>60</option></select>
+          <select id="cfg-workers"><option>1</option><option selected>2</option><option>3</option></select>
+        </div>
+      </section>
+    </main>
+
+    <div class="pwa-install" id="pwaInstall" hidden>
+      <img class="pwa-install-icon" src="/icons/icon-192.png" width="32" height="32" alt="" />
+      <span class="pwa-install-label">wayfold relay</span>
+      <button class="pwa-install-btn" id="pwaInstallBtn" type="button" data-i18n="pwa.install">Install</button>
+      <button class="pwa-install-close" id="pwaInstallClose" type="button" data-i18n-aria="pwa.dismiss" aria-label="Not now">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="pwa-install-guide" id="pwaInstallGuide" hidden>
+      <button class="pwa-install-guide-close" id="pwaInstallGuideClose" type="button" data-i18n-aria="pwa.dismiss" aria-label="Not now">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="pwa-install-guide-head">
+        <img class="pwa-install-guide-icon" src="/icons/icon-192.png" width="40" height="40" alt="" />
+        <div>
+          <p class="pwa-install-guide-eyebrow" data-i18n="pwa.installEyebrow">App available</p>
+          <p class="pwa-install-guide-title" data-i18n="pwa.installTitle">wayfold relay on your device</p>
+        </div>
+      </div>
+      <ol class="pwa-install-guide-steps" id="pwaInstallIosSteps" hidden>
+        <li data-i18n="pwa.ios1">Tap Share</li>
+        <li data-i18n="pwa.ios2">Choose ?Add to Home Screen?</li>
+        <li data-i18n="pwa.ios3">Confirm Add</li>
+      </ol>
+      <p class="pwa-install-guide-fallback" id="pwaInstallFallback" hidden data-i18n="pwa.installFallback">From the browser menu ?, choose ?Install app? or ?Add to Home Screen?.</p>
+    </div>
+
+    <script type="module" src="../app/main.ts"></script>
+  </body>
+</html>
