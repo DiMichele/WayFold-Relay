@@ -1179,6 +1179,8 @@ body.role-receive .btn-xfer--go {
 
 .camera-panel .preview {
   position: relative;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 .camera-panel .preview::after {
   content: "";
@@ -1192,6 +1194,28 @@ body.role-receive .btn-xfer--go {
 .camera-panel:has(.xfer-progress.is-receiving) .preview::after {
   border-color: color-mix(in srgb, var(--role-acc) 75%, transparent);
   opacity: 0.85;
+}
+.preview .focus-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 2;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 7px 12px;
+  max-width: calc(100% - 28px);
+  border-radius: 999px;
+  background: color-mix(in srgb, #0b1116 72%, transparent);
+  color: #f4f1ea;
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+}
+.preview.is-locked .focus-hint {
+  display: none;
 }
 
 .result-panel {

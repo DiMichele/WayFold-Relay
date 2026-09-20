@@ -5,6 +5,7 @@
 
 import wasmUrl from "zxing-wasm/reader/zxing_reader.wasm?url";
 import { prepareZXingModule, readBarcodes } from "zxing-wasm/reader";
+import { cropRgbaCenter } from "./image-crop.ts";
 
 prepareZXingModule({
   overrides: {
@@ -18,13 +19,30 @@ const ctx = self as unknown as {
   postMessage(msg: unknown, transfer?: Transferable[]): void;
 };
 
+const READ_OPTS = { formats: ["QRCode"] as ["QRCode"], maxNumberOfSymbols: 1 };
+
+function toImageData(data: Uint8ClampedArray, width: number, height: number): ImageData {
+  const copy = new Uint8ClampedArray(data.length);
+  copy.set(data);
+  return new ImageData(copy, width, height);
+}
+
+async function decodeQr(img: ImageData): Promise<Uint8Array | null> {
+  const results = await readBarcodes(img, READ_OPTS);
+  const hit = results.find((x) => x.isValid && x.bytes.length > 0);
+  return hit ? hit.bytes : null;
+}
+
 ctx.onmessage = async (e: MessageEvent) => {
   const { id, buf, w, h } = e.data as { id: number; buf: ArrayBuffer; w: number; h: number };
   try {
-    const img = new ImageData(new Uint8ClampedArray(buf), w, h);
-    const results = await readBarcodes(img, { formats: ["QRCode"], maxNumberOfSymbols: 1 });
-    const r = results.find((x) => x.isValid && x.bytes.length > 0);
-    ctx.postMessage({ id, bytes: r ? r.bytes : null });
+    const pixels = new Uint8ClampedArray(buf);
+    let bytes = await decodeQr(toImageData(pixels, w, h));
+    if (!bytes && w >= 80 && h >= 80) {
+      const crop = cropRgbaCenter(pixels, w, h, 0.58);
+      bytes = await decodeQr(toImageData(crop.data, crop.width, crop.height));
+    }
+    ctx.postMessage({ id, bytes });
   } catch {
     ctx.postMessage({ id, bytes: null });
   }

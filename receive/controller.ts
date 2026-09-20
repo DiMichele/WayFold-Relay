@@ -3,6 +3,14 @@ import { parseEnvelope, PREVIEW_MIME_TYPES } from "../shared/envelope.ts";
 import { SESSION_STALL_TIMEOUT_MS, SOFT_ORIGINAL_LIMIT } from "../shared/limits.ts";
 import { fnv1a, parseFrame, type FrameHeader } from "../shared/protocol.ts";
 import { t, onLangChange } from "../shared/i18n.ts";
+import {
+  applyFirstSupportedConstraint,
+  qrFocusConstraintFallbacks,
+  tapPointFromEvent,
+  type FocusModePref,
+  type FocusPoint,
+  type QrTrackCapabilities,
+} from "./camera.ts";
 
 /** Overhead tipico LT per stimare i frame ancora necessari (spesso si completa prima). */
 const OVERHEAD_EST = 1.12;
@@ -42,6 +50,10 @@ let etaEmaSec = 0;
 const rejectedLargeSessions = new Set<string>();
 const grab = document.createElement("canvas");
 let frameId = 0;
+let focusTimer: number | null = null;
+let focusBusy = false;
+let lastFocusPoint: FocusPoint = { x: 0.5, y: 0.5 };
+let focusLocked = false;
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${Math.max(0, Math.round(n))} B`;
@@ -313,24 +325,114 @@ function markCameraGranted(): void {
 }
 
 function releaseCameraTracksOnly(): void {
+  stopQrAutofocus();
   stream?.getTracks().forEach((track) => track.stop());
   stream = null;
   const video = el<HTMLVideoElement>("video");
   if (video) video.srcObject = null;
 }
 
+function videoTrack(): MediaStreamTrack | null {
+  return stream?.getVideoTracks()[0] ?? null;
+}
+
+function readFocusCaps(track: MediaStreamTrack): QrTrackCapabilities {
+  try {
+    return (track.getCapabilities?.() ?? {}) as QrTrackCapabilities;
+  } catch {
+    return {};
+  }
+}
+
+function setFocusHintVisible(visible: boolean): void {
+  const hint = document.getElementById("focus-hint");
+  const preview = document.getElementById("preview");
+  if (hint) hint.hidden = !visible;
+  preview?.classList.toggle("is-locked", !visible);
+}
+
+async function applyQrFocus(point: FocusPoint, pref: FocusModePref = "auto"): Promise<boolean> {
+  const track = videoTrack();
+  if (!track || focusBusy) return false;
+  focusBusy = true;
+  lastFocusPoint = point;
+  try {
+    return await applyFirstSupportedConstraint(
+      track,
+      qrFocusConstraintFallbacks(readFocusCaps(track), point, pref),
+    );
+  } finally {
+    focusBusy = false;
+  }
+}
+
+function stopQrAutofocus(): void {
+  if (focusTimer !== null) {
+    window.clearInterval(focusTimer);
+    focusTimer = null;
+  }
+}
+
+function startQrAutofocus(): void {
+  stopQrAutofocus();
+  focusLocked = false;
+  lastFocusPoint = { x: 0.5, y: 0.5 };
+  setFocusHintVisible(true);
+  const kick = (pref: FocusModePref) => {
+    if (running && !paused && !done && !focusLocked) void applyQrFocus(lastFocusPoint, pref);
+  };
+  kick("continuous");
+  // Some Android drivers ignore AF until the track is actually rendering.
+  window.setTimeout(() => kick("continuous"), 280);
+  // Older sensors park at infinity until a single-shot kick; repeat while hunting.
+  focusTimer = window.setInterval(() => {
+    if (!running || paused || done) return;
+    if (decoder) {
+      lockQrFocus();
+      return;
+    }
+    void (async () => {
+      await applyQrFocus(lastFocusPoint, "single-shot");
+      window.setTimeout(() => kick("continuous"), 450);
+    })();
+  }, 1800);
+}
+
+function lockQrFocus(): void {
+  if (focusLocked) return;
+  focusLocked = true;
+  stopQrAutofocus();
+  setFocusHintVisible(false);
+  void applyQrFocus(lastFocusPoint, "continuous");
+}
+
+function onPreviewPointer(ev: PointerEvent): void {
+  if (!running || paused || done) return;
+  const preview = document.getElementById("preview");
+  if (!preview) return;
+  const rect = preview.getBoundingClientRect();
+  const point = tapPointFromEvent(ev.clientX, ev.clientY, rect);
+  void (async () => {
+    await applyQrFocus(point, "single-shot");
+    window.setTimeout(() => {
+      if (running && !paused && !done) void applyQrFocus(point, "continuous");
+    }, 500);
+  })();
+}
+
 async function acquireCameraStream(captureWidth: number, captureFps: number): Promise<MediaStream> {
   if (isStreamLive() && stream) return stream;
 
-  const preferred: MediaStreamConstraints = {
-    audio: false,
-    video: {
-      facingMode: { ideal: "environment" },
-      width: { ideal: captureWidth },
-      height: { ideal: Math.round((captureWidth * 3) / 4) },
-      frameRate: { ideal: captureFps },
-    },
+  const video: MediaTrackConstraints = {
+    facingMode: { ideal: "environment" },
+    width: { ideal: captureWidth },
+    height: { ideal: Math.round((captureWidth * 3) / 4) },
+    frameRate: { ideal: captureFps },
   };
+  // Chrome/Android: ask for continuous AF up front when the device supports it.
+  Object.assign(video, { focusMode: { ideal: "continuous" } });
+
+  const preferred: MediaStreamConstraints = { audio: false, video };
   try {
     const next = await navigator.mediaDevices.getUserMedia(preferred);
     markCameraGranted();
@@ -523,6 +625,7 @@ async function start(): Promise<void> {
   }
   video.srcObject = stream;
   await video.play().catch(() => undefined);
+  startQrAutofocus();
   if (stats) {
     stats.hidden = true;
     stats.textContent = "";
@@ -624,6 +727,7 @@ function onDecoded(bytes: Uint8Array): void {
     }
     decoder = new LTDecoder(header.k, header.blockLen, header.sessionId, header.totalLen);
     activeHeader = { ...header };
+    lockQrFocus();
     startTs = performance.now();
     lastProgressTs = startTs;
     resetProgressSamples();
@@ -786,6 +890,11 @@ async function onResumeClick(): Promise<void> {
         video.srcObject = stream;
         await video.play().catch(() => undefined);
       }
+      if (decoder) {
+        void applyQrFocus(lastFocusPoint, "continuous");
+      } else {
+        startQrAutofocus();
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       showRecvError(t("receive.cameraError", { msg }), true);
@@ -822,6 +931,7 @@ export function mountReceive(): void {
   el<HTMLButtonElement>("resume")?.addEventListener("click", onResumeClick);
   el<HTMLButtonElement>("cancel")?.addEventListener("click", onCancelClick);
   el<HTMLButtonElement>("reset")?.addEventListener("click", onResetClick);
+  document.getElementById("preview")?.addEventListener("pointerdown", onPreviewPointer);
   document.addEventListener("visibilitychange", onVisibility);
   window.addEventListener("pagehide", onPageHide);
   if (!langWired) {
@@ -845,6 +955,7 @@ export function unmountReceive(): void {
   el<HTMLButtonElement>("resume")?.removeEventListener("click", onResumeClick);
   el<HTMLButtonElement>("cancel")?.removeEventListener("click", onCancelClick);
   el<HTMLButtonElement>("reset")?.removeEventListener("click", onResetClick);
+  document.getElementById("preview")?.removeEventListener("pointerdown", onPreviewPointer);
   document.removeEventListener("visibilitychange", onVisibility);
   window.removeEventListener("pagehide", onPageHide);
   cleanupResources();

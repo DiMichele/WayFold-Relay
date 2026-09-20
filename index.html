@@ -227,6 +227,7 @@
             <ul class="tip-list">
               <li data-i18n="receive.tipLight">Good lighting, avoid screen glare</li>
               <li data-i18n="receive.tipDistance">Hold 20–40 cm from the screen</li>
+              <li data-i18n="receive.tipFocus">If the QR is blurry, tap it in the preview</li>
               <li data-i18n="receive.tipSteady">Keep the phone steady while progress moves</li>
             </ul>
           </div>
@@ -244,6 +245,7 @@
           <div class="camera-panel" id="camera-panel" hidden>
             <div class="preview" id="preview">
               <video id="video" muted playsinline></video>
+              <p class="focus-hint" id="focus-hint" hidden data-i18n="receive.tapToFocus">Tap the QR to focus</p>
             </div>
             <div class="xfer-progress" id="xfer-progress" hidden>
               <div class="xfer-progress-head">
@@ -275,7 +277,7 @@
         </div>
         <div class="settings-defaults" id="settings" hidden aria-hidden="true">
           <select id="cfg-width"><option>960</option><option selected>1280</option><option>1920</option></select>
-          <select id="cfg-capfps"><option>30</option><option selected>60</option></select>
+          <select id="cfg-capfps"><option selected>30</option><option>60</option></select>
           <select id="cfg-workers"><option>1</option><option selected>2</option><option>3</option></select>
         </div>
       </section>
